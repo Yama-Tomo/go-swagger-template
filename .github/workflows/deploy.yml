@@ -1,0 +1,54 @@
+name: deploy
+on: [push]
+
+env:
+  DOCKER_IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE }}:${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - name: cache docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            ${{ github.ref }}-${{ github.sha }}
+            ${{ github.ref }}
+            refs/head/main
+      - uses: docker/setup-buildx-action@v1
+        id: setup-buildx
+      - name: setup cloud sdk
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true  # Set to true to authenticate the Cloud Run action
+      - run: gcloud auth configure-docker
+      - name: build and push docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          target: prod
+          push: true
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          tags: ${{ env.DOCKER_IMAGE }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,mode=max,dest=/tmp/.buildx-cache-new
+#      - name: build and push docker image
+#        run: |
+#          docker build -t ${{ env.DOCKER_IMAGE }} --target prod .
+#          docker push ${{ env.DOCKER_IMAGE }}
+      - name: deploy to cloud run
+        run: |
+          env_vars="HOST=${{ secrets.HOST }}"
+
+          gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE }} --region ${{ secrets.GCP_REGION }} --image ${{ env.DOCKER_IMAGE }} --platform managed \
+            --set-env-vars ${env_vars}
+      - name: move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
