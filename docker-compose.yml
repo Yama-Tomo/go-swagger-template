@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  api:
+    env_file:
+      - .env
+    build:
+      context: .
+      target: dev
+    tty: true
+    working_dir: /app
+    ports:
+      - 5000:8080
+    volumes:
+      - ./:/app/

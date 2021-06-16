@@ -1,0 +1,3 @@
+# go-swagger-template
+
+
