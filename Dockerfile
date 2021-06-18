@@ -31,7 +31,7 @@ COPY go.mod .
 COPY go.sum .
 COPY Makefile .
 
-RUN apk add make
+RUN apk add make gcc musl-dev
 RUN go mod download
 RUN make install-tools
 
