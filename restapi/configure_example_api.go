@@ -4,7 +4,9 @@ package restapi
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
@@ -22,6 +24,9 @@ func configureFlags(api *example_api.ExampleAPIAPI) {
 func configureAPI(api *example_api.ExampleAPIAPI) http.Handler {
 	// configure the api here
 	api.ServeError = errors.ServeError
+	for _, e := range os.Environ() {
+		fmt.Println(e)
+	}
 
 	// Set your custom logger if needed. Default one is log.Printf
 	// Expected interface func(string, ...interface{})
